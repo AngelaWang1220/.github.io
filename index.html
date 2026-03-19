@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>毅风酒店库存管理系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.js"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .login-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-indicator {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .status-logged-out {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .status-logged-in {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+        }
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+        .sync-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #ccc;
+        }
+        .sync-indicator.connected {
+            background-color: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+        .sync-indicator.syncing {
+            background-color: #FF9800;
+            animation: pulse 0.5s infinite;
+        }
+        .sync-indicator.error {
+            background-color: #f44336;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input:disabled, textarea:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        button.danger {
+            background-color: #f44336;
+        }
+        button.danger:hover {
+            background-color: #da190b;
+        }
+        button.info {
+            background-color: #2196F3;
+        }
+        button.info:hover {
+            background-color: #0b7dda;
+        }
+        button.warning {
+            background-color: #ff9800;
+        }
+        button.warning:hover {
+            background-color: #f57c00;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .notification {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .search-bar {
+            margin-bottom: 20px;
+        }
+        .summary-box {
+            background-color: #e8f5e8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4CAF50;
+            position: relative;
+        }
+        .summary-item {
+            display: inline-block;
+            margin-right: 20px;
+        }
+        .summary-label {
+            font-weight: bold;
+            color: #333;
+        }
+        .summary-value {
+            color: #2e7d32;
+            font-size: 1.2em;
+        }
+        .product-list {
+            margin-top: 10px;
+        }
+        .product-item {
+            margin-bottom: 5px;
+            padding: 5px;
+            background-color: #f9f9f9;
+            border-radius: 3px;
+        }
+        .confirm-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+        .modal-buttons {
+            margin-top: 15px;
+            text-align: center;
+        }
+        .transaction-details {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+        }
+        .export-btn-container {
+            float: right;
+        }
+        .login-required-tip {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .login-required-tip.show {
+            display: block;
+        }
+        .config-panel {
+            background-color: #e3f2fd;
+            border: 1px solid #90caf9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .config-panel h3 {
+            margin-top: 0;
+            color: #1565c0;
+        }
+        .config-status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .config-status.connected {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+        }
+        .config-status.disconnected {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .config-status.connecting {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .debug-log {
+            background-color: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .debug-log-item {
+            margin-bottom: 5px;
+        }
+        .debug-log-item.error {
+            color: #ef5350;
+        }
+        .debug-log-item.success {
+            color: #66bb6a;
+        }
+        .debug-log-item.info {
+            color: #42a5f5;
+        }
+        .sdk-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-left: 10px;
+        }
+        .sdk-status.loaded {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .sdk-status.failed {
+            background-color: #f44336;
+            color: white;
+        }
+        .sdk-status.loading {
+            background-color: #FF9800;
+            color: white;
+        }
+        .cloud-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #3ECF8E, #2196F3);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-bar">
+            <h1 style="margin: 0; text-align: left;">毅风酒店库存管理系统 <span class="cloud-badge">☁️ 云同步</span></h1>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="sync-status">
+                    <div class="sync-indicator" id="syncIndicator"></div>
+                    <span id="syncStatusText">正在连接...</span>
+                    <span id="sdkStatus" class="sdk-status loading">SDK 加载中...</span>
+                </div>
+                <div class="login-status">
+                    <span id="statusIndicator" class="status-indicator status-logged-out">未登录</span>
+                    <button id="loginBtn" onclick="showLoginModal()">登录</button>
+                    <button id="logoutBtn" onclick="logout()" style="display: none;" class="warning">退出登录</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="notification" class="notification"></div>
+        
+        <!-- 云状态面板 -->
+        <div class="config-panel">
+            <h3>☁️ 云同步状态</h3>
+            <div class="config-item">
+                <label>Supabase 项目:</label>
+                <span id="projectUrl" style="color: #666; font-size: 13px;">ajbugjtephwjmcikarpp.supabase.co</span>
+            </div>
+            <div id="configStatus" class="config-status connecting">
+                🔄 正在自动连接云数据库...
+            </div>
+            
+            <!-- 调试日志 -->
+            <div class="config-item" style="margin-top: 20px;">
+                <label style="display: block; margin-bottom: 10px;">🔍 连接日志:</label>
+                <div class="debug-log" id="debugLog">
+                    <div class="debug-log-item info">系统初始化中...</div>
+                </div>
+            </div>
+            
+            <div class="config-item" style="margin-top: 15px;">
+                <button onclick="forceSync()" class="info">🔄 手动同步</button>
+                <button onclick="clearCloudConfig()" class="danger">⚠️ 切换回本地模式</button>
+            </div>
+        </div>
+        
+        <!-- 登录提示 -->
+        <div id="loginRequiredTip" class="login-required-tip">
+            🔒 提示：您当前未登录，只能查看数据和导出数据。如需进行入库、出库或删除操作，请先登录管理员账号。
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('dashboard')">库存概览</div>
+            <div class="tab" onclick="switchTab('inbound')">入库操作</div>
+            <div class="tab" onclick="switchTab('outbound')">出库操作</div>
+            <div class="tab" onclick="switchTab('transactions')">交易记录</div>
+        </div>
+        
+        <!-- 库存概览 -->
+        <div id="dashboard" class="tab-content active">
+            <h2>当前库存</h2>
+            <div class="summary-box">
+                <div class="summary-item">
+                    <span class="summary-label">总产品种类:</span>
+                    <span class="summary-value" id="totalProducts">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">总库存数量:</span>
+                    <span class="summary-value" id="totalInventory">0</span>
+                </div>
+                <div class="export-btn-container">
+                    <button onclick="exportTransactionsToExcel()">导出交易记录 (Excel)</button>
+                </div>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="searchInventory" placeholder="搜索产品名称..." onkeyup="filterInventory()">
+            </div>
+            <table id="inventoryTable">
+                <thead>
+                    <tr>
+                        <th>产品名称</th>
+                        <th>当前库存</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryBody">
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- 入库操作 -->
+        <div id="inbound" class="tab-content">
+            <h2>入库操作</h2>
+            <div id="inboundLockTip" class="login-required-tip show">
+                🔒 需要登录才能进行入库操作
+            </div>
+            <form id="inboundForm">
+                <div class="form-group">
+                    <label for="inboundProduct">产品名称:</label>
+                    <input type="text" id="inboundProduct" placeholder="请输入产品名称" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="inboundQuantity">入库数量:</label>
+                    <input type="number" id="inboundQuantity" min="1" placeholder="请输入数量" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="inboundDepartment">使用部门:</label>
+                    <input type="text" id="inboundDepartment" placeholder="请输入部门名称" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="inboundRemarks">备注:</label>
+                    <textarea id="inboundRemarks" rows="3" placeholder="请输入备注" disabled></textarea>
+                </div>
+                <button type="submit" id="inboundSubmitBtn" disabled>确认入库</button>
+                <button type="reset" id="inboundResetBtn" disabled>重置</button>
+            </form>
+        </div>
+        
+        <!-- 出库操作 -->
+        <div id="outbound" class="tab-content">
+            <h2>出库操作</h2>
+            <div id="outboundLockTip" class="login-required-tip show">
+                🔒 需要登录才能进行出库操作
+            </div>
+            <form id="outboundForm">
+                <div class="form-group">
+                    <label for="outboundProduct">产品名称:</label>
+                    <input type="text" id="outboundProduct" placeholder="请输入产品名称" list="productList" disabled>
+                    <datalist id="productList">
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label for="outboundQuantity">出库数量:</label>
+                    <input type="number" id="outboundQuantity" min="1" placeholder="请输入数量" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="outboundDepartment">使用部门:</label>
+                    <input type="text" id="outboundDepartment" placeholder="请输入部门名称" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="outboundRemarks">备注:</label>
+                    <textarea id="outboundRemarks" rows="3" placeholder="请输入备注" disabled></textarea>
+                </div>
+                <button type="submit" id="outboundSubmitBtn" disabled>确认出库</button>
+                <button type="reset" id="outboundResetBtn" disabled>重置</button>
+            </form>
+        </div>
+        
+        <!-- 交易记录 -->
+        <div id="transactions" class="tab-content">
+            <h2>交易记录</h2>
+            <div class="summary-box">
+                <div class="summary-item">
+                    <span class="summary-label">总产品种类:</span>
+                    <span class="summary-value" id="totalProductsTrans">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">总库存数量:</span>
+                    <span class="summary-value" id="totalInventoryTrans">0</span>
+                </div>
+                <div class="export-btn-container">
+                    <button onclick="exportTransactionsToExcel()">导出交易记录 (Excel)</button>
+                </div>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="searchTransactions" placeholder="搜索产品名称或部门..." onkeyup="filterTransactions()">
+            </div>
+            <table id="transactionsTable">
+                <thead>
+                    <tr>
+                        <th>日期时间</th>
+                        <th>产品名称</th>
+                        <th>操作类型</th>
+                        <th>数量</th>
+                        <th>使用部门</th>
+                        <th>备注</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionsBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 登录弹窗 -->
+    <div class="overlay" id="loginOverlay"></div>
+    <div class="confirm-box" id="loginModal" style="display: none;">
+        <h3>管理员登录</h3>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="loginUsername">用户名:</label>
+                <input type="text" id="loginUsername" placeholder="请输入用户名" required>
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">密码:</label>
+                <input type="password" id="loginPassword" placeholder="请输入密码" required>
+            </div>
+            <div class="modal-buttons">
+                <button type="submit">登录</button>
+                <button type="button" onclick="hideLoginModal()">取消</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 删除确认弹窗 -->
+    <div class="overlay" id="deleteOverlay"></div>
+    <div class="confirm-box" id="confirmBox">
+        <h3>确认删除</h3>
+        <p>您确定要删除这条交易记录吗？</p>
+        <div class="transaction-details" id="transactionDetails">
+        </div>
+        <p>删除后库存将相应调整：</p>
+        <div class="product-list" id="adjustmentList">
+        </div>
+        <div class="modal-buttons">
+            <button class="danger" onclick="deleteTransaction()">确认删除</button>
+            <button onclick="hideDeleteConfirm()">取消</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // 【内置配置】Supabase 连接信息
+        // ============================================
+        const SUPABASE_CONFIG = {
+            url: 'https://ajbugjtephwjmcikarpp.supabase.co',
+            key: 'sb_publishable_KyvBE-auTQTVRU9KS2Hreg_zeJt9YUj'
+        };
+        
+        // ============================================
+        // SDK 加载检测
+        // ============================================
+        let sdkLoaded = false;
+        
+        function checkSdkLoaded() {
+            const sdkStatus = document.getElementById('sdkStatus');
+            if (typeof supabase !== 'undefined' && supabase.createClient) {
+                sdkLoaded = true;
+                sdkStatus.textContent = 'SDK 已加载 ✓';
+                sdkStatus.className = 'sdk-status loaded';
+                debugLog('Supabase SDK 加载成功', 'success');
+                return true;
+            } else {
+                sdkStatus.textContent = 'SDK 加载失败 ✗';
+                sdkStatus.className = 'sdk-status failed';
+                return false;
+            }
+        }
+        
+        // ============================================
+        // 调试日志工具
+        // ============================================
+        function debugLog(message, type = 'info') {
+            const logEl = document.getElementById('debugLog');
+            if (!logEl) return;
+            
+            const time = new Date().toLocaleTimeString();
+            const item = document.createElement('div');
+            item.className = `debug-log-item ${type}`;
+            item.textContent = `[${time}] ${message}`;
+            logEl.appendChild(item);
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // ============================================
+        // Supabase 数据层
+        // ============================================
+        class SupabaseDataLayer {
+            constructor() {
+                this.client = null;
+                this.isConnected = false;
+                this.listeners = [];
+            }
+            
+            // 初始化连接
+            async init(url, key) {
+                try {
+                    // 确保 SDK 已加载
+                    if (!checkSdkLoaded()) {
+                        throw new Error('Supabase SDK 无法加载，请检查网络连接');
+                    }
+                    
+                    debugLog('创建 Supabase 客户端...', 'info');
+                    this.client = supabase.createClient(url, key);
+                    
+                    // 测试连接
+                    debugLog('测试数据库连接...', 'info');
+                    const { data, error } = await this.client
+                        .from('inventory')
+                        .select('*')
+                        .limit(1);
+                    
+                    if (error) {
+                        throw new Error(`连接测试失败: ${error.message}`);
+                    }
+                    
+                    this.isConnected = true;
+                    debugLog('Supabase 连接成功', 'success');
+                    
+                    // 设置实时订阅
+                    this.setupRealtime();
+                    
+                    return true;
+                } catch (error) {
+                    debugLog(`Supabase 初始化失败: ${error.message}`, 'error');
+                    this.isConnected = false;
+                    return false;
+                }
+            }
+            
+            // 设置实时订阅
+            setupRealtime() {
+                if (!this.client) return;
+                
+                try {
+                    const channel = this.client
+                        .channel('inventory-changes')
+                        .on('postgres_changes', { 
+                            event: '*', 
+                            schema: 'public', 
+                            table: 'transactions' 
+                        }, (payload) => {
+                            debugLog('收到实时数据更新', 'info');
+                            this.notifyListeners();
+                        })
+                        .subscribe((status) => {
+                            debugLog(`实时订阅状态: ${status}`, 'info');
+                        });
+                } catch (error) {
+                    debugLog(`实时订阅设置失败: ${error.message}`, 'error');
+                }
+            }
+            
+            // 获取库存
+            async getInventory() {
+                if (!this.isConnected) {
+                    throw new Error('未连接 Supabase');
+                }
+                
+                const { data, error } = await this.client
+                    .from('inventory')
+                    .select('*');
+                
+                if (error) {
+                    debugLog(`获取库存失败: ${error.message}`, 'error');
+                    throw error;
+                }
+                
+                const inventory = {};
+                data.forEach(item => {
+                    inventory[item.product_name] = item.quantity;
+                });
+                
+                debugLog(`获取库存成功: ${Object.keys(inventory).length} 个产品`, 'success');
+                return inventory;
+            }
+            
+            // 获取交易记录
+            async getTransactions() {
+                if (!this.isConnected) {
+                    throw new Error('未连接 Supabase');
+                }
+                
+                const { data, error } = await this.client
+                    .from('transactions')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) {
+                    debugLog(`获取交易记录失败: ${error.message}`, 'error');
+                    throw error;
+                }
+                
+                debugLog(`获取交易记录成功: ${data ? data.length : 0} 条`, 'success');
+                return data || [];
+            }
+            
+            // 保存库存
+            async saveInventory(inventory) {
+                if (!this.isConnected) return;
+                
+                const updates = Object.entries(inventory).map(([product, quantity]) => ({
+                    product_name: product,
+                    quantity: quantity,
+                    updated_at: new Date().toISOString()
+                }));
+                
+                for (const item of updates) {
+                    const { error } = await this.client
+                        .from('inventory')
+                        .upsert(item, { onConflict: 'product_name' });
+                    
+                    if (error) {
+                        debugLog(`保存库存失败: ${error.message}`, 'error');
+                    }
+                }
+                
+                debugLog('库存保存成功', 'success');
+            }
+            
+            // 添加交易
+            async addTransaction(transaction) {
+                if (!this.isConnected) return;
+                
+                const { error } = await this.client
+                    .from('transactions')
+                    .insert([{ 
+                        ...transaction, 
+                        created_at: new Date().toISOString() 
+                    }]);
+                
+                if (error) {
+                    debugLog(`添加交易失败: ${error.message}`, 'error');
+                    throw error;
+                }
+                
+                debugLog('交易添加成功', 'success');
+            }
+            
+            // 删除交易
+            async deleteTransaction(transactionId) {
+                if (!this.isConnected) return;
+                
+                const { error } = await this.client
+                    .from('transactions')
+                    .delete()
+                    .eq('id', transactionId);
+                
+                if (error) {
+                    debugLog(`删除交易失败: ${error.message}`, 'error');
+                    throw error;
+                }
+                
+                debugLog('交易删除成功', 'success');
+            }
+            
+            // 监听器
+            addListener(callback) {
+                this.listeners.push(callback);
+            }
+            
+            notifyListeners() {
+                this.listeners.forEach(cb => cb());
+            }
+            
+            // 更新同步状态
+            updateSyncStatus(status = 'disconnected') {
+                const indicator = document.getElementById('syncIndicator');
+                const text = document.getElementById('syncStatusText');
+                
+                if (!indicator || !text) return;
+                
+                indicator.className = 'sync-indicator';
+                if (status === 'connected') {
+                    indicator.classList.add('connected');
+                    text.textContent = '云同步已连接';
+                } else if (status === 'syncing') {
+                    indicator.classList.add('syncing');
+                    text.textContent = '同步中...';
+                } else if (status === 'error') {
+                    indicator.classList.add('error');
+                    text.textContent = '同步失败';
+                } else {
+                    text.textContent = '本地模式';
+                }
+            }
+            
+            // 加载数据
+            async loadData() {
+                const [inventory, transactions] = await Promise.all([
+                    this.getInventory(),
+                    this.getTransactions()
+                ]);
+                return { inventory, transactions };
+            }
+        }
+        
+        // 全局数据层实例
+        const dataLayer = new SupabaseDataLayer();
+        
+        // ============================================
+        // 管理员凭据
+        // ============================================
+        const ADMIN_USERNAME = '毅风酒店';
+        const ADMIN_PASSWORD = '1220';
+        
+        // 登录状态
+        let isLoggedIn = false;
+        
+        // 本地数据缓存
+        let inventoryData = {};
+        let transactionData = [];
+
+        // 检查登录状态
+        function checkLoginStatus() {
+            const savedLogin = sessionStorage.getItem('isLoggedIn');
+            if (savedLogin === 'true') {
+                isLoggedIn = true;
+                updateLoginUI();
+            }
+        }
+        
+        // 保存云配置
+        function saveCloudConfig() {
+            localStorage.setItem('supabaseConfig', JSON.stringify(SUPABASE_CONFIG));
+        }
+        
+        // 清除云配置
+        function clearCloudConfig() {
+            localStorage.removeItem('supabaseConfig');
+            
+            // 回退到本地存储
+            inventoryData = JSON.parse(localStorage.getItem('inventory')) || {};
+            transactionData = JSON.parse(localStorage.getItem('transactions')) || [];
+            ensureIds();
+            refreshAll();
+            
+            dataLayer.updateSyncStatus('disconnected');
+            updateConfigStatus('disconnected', '已切换回本地存储模式');
+            debugLog('已切换回本地模式', 'info');
+            showNotification('已切换回本地模式', true);
+        }
+        
+        // 更新配置状态显示
+        function updateConfigStatus(status, message) {
+            const statusEl = document.getElementById('configStatus');
+            if (statusEl) {
+                statusEl.className = 'config-status ' + status;
+                statusEl.textContent = message;
+            }
+        }
+        
+        // 强制同步
+        async function forceSync() {
+            if (!dataLayer.isConnected) {
+                showNotification('未连接云同步', false);
+                return;
+            }
+            
+            dataLayer.updateSyncStatus('syncing');
+            debugLog('开始手动同步...', 'info');
+            
+            try {
+                const data = await dataLayer.loadData();
+                inventoryData = data.inventory;
+                transactionData = data.transactions;
+                refreshAll();
+                dataLayer.updateSyncStatus('connected');
+                debugLog('同步完成', 'success');
+                showNotification('数据同步成功', true);
+            } catch (error) {
+                dataLayer.updateSyncStatus('error');
+                debugLog(`同步失败: ${error.message}`, 'error');
+                showNotification('数据同步失败', false);
+            }
+        }
+        
+        // 刷新所有界面
+        function refreshAll() {
+            renderInventoryTable();
+            populateProductList();
+            updateSummary();
+            renderTransactionsTable();
+        }
+
+        // 添加唯一ID
+        function ensureIds() {
+            let hasChanges = false;
+            transactionData.forEach((transaction, index) => {
+                if (!transaction.id) {
+                    transaction.id = `trans_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
+                    hasChanges = true;
+                }
+            });
+            if (hasChanges && dataLayer.isConnected) {
+                dataLayer.saveInventory(inventoryData);
+            }
+        }
+
+        // 显示通知
+        function showNotification(message, isSuccess) {
+            const notification = document.getElementById('notification');
+            if (!notification) return;
+            
+            notification.textContent = message;
+            notification.className = 'notification ' + (isSuccess ? 'success' : 'error');
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        // 显示登录弹窗
+        function showLoginModal() {
+            document.getElementById('loginOverlay').style.display = 'block';
+            document.getElementById('loginModal').style.display = 'block';
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginUsername').focus();
+        }
+
+        // 隐藏登录弹窗
+        function hideLoginModal() {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('loginModal').style.display = 'none';
+        }
+
+        // 登录处理
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            
+            if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+                isLoggedIn = true;
+                sessionStorage.setItem('isLoggedIn', 'true');
+                updateLoginUI();
+                hideLoginModal();
+                showNotification('登录成功！欢迎管理员', true);
+            } else {
+                showNotification('用户名或密码错误', false);
+            }
+        });
+
+        // 退出登录
+        function logout() {
+            isLoggedIn = false;
+            sessionStorage.removeItem('isLoggedIn');
+            updateLoginUI();
+            showNotification('已退出登录', true);
+        }
+
+        // 更新登录相关UI
+        function updateLoginUI() {
+            const statusIndicator = document.getElementById('statusIndicator');
+            const loginBtn = document.getElementById('loginBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const loginRequiredTip = document.getElementById('loginRequiredTip');
+            const inboundLockTip = document.getElementById('inboundLockTip');
+            const outboundLockTip = document.getElementById('outboundLockTip');
+            
+            const inboundInputs = ['inboundProduct', 'inboundQuantity', 'inboundDepartment', 'inboundRemarks'];
+            const inboundButtons = ['inboundSubmitBtn', 'inboundResetBtn'];
+            
+            const outboundInputs = ['outboundProduct', 'outboundQuantity', 'outboundDepartment', 'outboundRemarks'];
+            const outboundButtons = ['outboundSubmitBtn', 'outboundResetBtn'];
+            
+            if (isLoggedIn) {
+                statusIndicator.textContent = '已登录 (管理员)';
+                statusIndicator.className = 'status-indicator status-logged-in';
+                loginBtn.style.display = 'none';
+                logoutBtn.style.display = 'inline-block';
+                loginRequiredTip.classList.remove('show');
+                inboundLockTip.classList.remove('show');
+                outboundLockTip.classList.remove('show');
+                
+                inboundInputs.forEach(id => document.getElementById(id).disabled = false);
+                inboundButtons.forEach(id => document.getElementById(id).disabled = false);
+                
+                outboundInputs.forEach(id => document.getElementById(id).disabled = false);
+                outboundButtons.forEach(id => document.getElementById(id).disabled = false);
+                
+                renderTransactionsTable();
+            } else {
+                statusIndicator.textContent = '未登录';
+                statusIndicator.className = 'status-indicator status-logged-out';
+                loginBtn.style.display = 'inline-block';
+                logoutBtn.style.display = 'none';
+                loginRequiredTip.classList.add('show');
+                inboundLockTip.classList.add('show');
+                outboundLockTip.classList.add('show');
+                
+                inboundInputs.forEach(id => document.getElementById(id).disabled = true);
+                inboundButtons.forEach(id => document.getElementById(id).disabled = true);
+                
+                outboundInputs.forEach(id => document.getElementById(id).disabled = true);
+                outboundButtons.forEach(id => document.getElementById(id).disabled = true);
+                
+                renderTransactionsTable();
+            }
+        }
+
+        // 切换标签页
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
+            document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            
+            if(tabName === 'dashboard') {
+                renderInventoryTable();
+                updateSummary();
+            } else if(tabName === 'outbound') {
+                populateProductList();
+            } else if(tabName === 'transactions') {
+                updateSummary();
+                renderTransactionsTable();
+            }
+        }
+
+        // 更新摘要
+        function updateSummary() {
+            const totalProducts = Object.keys(inventoryData).length;
+            const totalInventory = Object.values(inventoryData).reduce((sum, qty) => sum + qty, 0);
+            
+            document.getElementById('totalProducts').textContent = totalProducts;
+            document.getElementById('totalInventory').textContent = totalInventory;
+            document.getElementById('totalProductsTrans').textContent = totalProducts;
+            document.getElementById('totalInventoryTrans').textContent = totalInventory;
+        }
+
+        // 渲染库存表格
+        function renderInventoryTable() {
+            const tbody = document.getElementById('inventoryBody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            for(const [productName, quantity] of Object.entries(inventoryData)) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${productName}</td><td>${quantity}</td>`;
+                tbody.appendChild(row);
+            }
+        }
+
+        // 过滤库存
+        function filterInventory() {
+            const searchTerm = document.getElementById('searchInventory').value.toLowerCase();
+            document.querySelectorAll('#inventoryTable tbody tr').forEach(row => {
+                const productName = row.cells[0].textContent.toLowerCase();
+                row.style.display = productName.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        // 填充产品列表
+        function populateProductList() {
+            const datalist = document.getElementById('productList');
+            if (!datalist) return;
+            
+            datalist.innerHTML = '';
+            for(const productName in inventoryData) {
+                const option = document.createElement('option');
+                option.value = productName;
+                datalist.appendChild(option);
+            }
+        }
+
+        // 渲染交易记录
+        function renderTransactionsTable() {
+            const tbody = document.getElementById('transactionsBody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            const sortedTransactions = [...transactionData].sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            sortedTransactions.forEach((transaction) => {
+                const row = document.createElement('tr');
+                const deleteButton = isLoggedIn ? 
+                    `<button class="danger" onclick="showDeleteConfirm('${transaction.id}')">删除</button>` : 
+                    '<span style="color: #999;">🔒</span>';
+                
+                row.innerHTML = `
+                    <td>${transaction.date}</td>
+                    <td>${transaction.product}</td>
+                    <td>${transaction.type === 'in' ? '入库' : '出库'}</td>
+                    <td>${transaction.quantity}</td>
+                    <td>${transaction.department || '-'}</td>
+                    <td>${transaction.remarks || '-'}</td>
+                    <td>${deleteButton}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 过滤交易记录
+        function filterTransactions() {
+            const searchTerm = document.getElementById('searchTransactions').value.toLowerCase();
+            document.querySelectorAll('#transactionsTable tbody tr').forEach(row => {
+                const productName = row.cells[1].textContent.toLowerCase();
+                const department = row.cells[4].textContent.toLowerCase();
+                row.style.display = (productName.includes(searchTerm) || department.includes(searchTerm)) ? '' : 'none';
+            });
+        }
+
+        // 删除确认
+        let transactionIdToDelete = null;
+        function showDeleteConfirm(id) {
+            if (!isLoggedIn) {
+                showNotification('请先登录管理员账号', false);
+                showLoginModal();
+                return;
+            }
+            
+            transactionIdToDelete = id;
+            const transaction = transactionData.find(t => t.id === id);
+            
+            if (!transaction) {
+                showNotification('找不到交易记录', false);
+                return;
+            }
+            
+            document.getElementById('transactionDetails').innerHTML = `
+                <strong>交易详情:</strong><br>
+                产品名称: ${transaction.product}<br>
+                操作类型: ${transaction.type === 'in' ? '入库' : '出库'}<br>
+                数量: ${transaction.quantity}<br>
+                时间: ${transaction.date}
+            `;
+            
+            const adjustment = transaction.type === 'in' ? -transaction.quantity : transaction.quantity;
+            const newQuantity = Math.max(0, (inventoryData[transaction.product] || 0) + adjustment);
+            
+            document.getElementById('adjustmentList').innerHTML = `
+                <div class="product-item">${transaction.product}: ${inventoryData[transaction.product] || 0} → ${newQuantity}</div>
+            `;
+            
+            document.getElementById('deleteOverlay').style.display = 'block';
+            document.getElementById('confirmBox').style.display = 'block';
+        }
+
+        function hideDeleteConfirm() {
+            document.getElementById('deleteOverlay').style.display = 'none';
+            document.getElementById('confirmBox').style.display = 'none';
+            transactionIdToDelete = null;
+        }
+
+        // 重新计算库存
+        function recalculateInventory() {
+            inventoryData = {};
+            for(const transaction of transactionData) {
+                if(transaction.type === 'in') {
+                    inventoryData[transaction.product] = (inventoryData[transaction.product] || 0) + transaction.quantity;
+                } else {
+                    inventoryData[transaction.product] = (inventoryData[transaction.product] || 0) - transaction.quantity;
+                    if(inventoryData[transaction.product] <= 0) {
+                        delete inventoryData[transaction.product];
+                    }
+                }
+            }
+        }
+
+        // 删除交易
+        async function deleteTransaction() {
+            if (!isLoggedIn || !transactionIdToDelete) {
+                hideDeleteConfirm();
+                return;
+            }
+            
+            const transactionIndex = transactionData.findIndex(t => t.id === transactionIdToDelete);
+            if (transactionIndex === -1) {
+                showNotification('找不到交易记录', false);
+                hideDeleteConfirm();
+                return;
+            }
+            
+            const transaction = transactionData[transactionIndex];
+            transactionData.splice(transactionIndex, 1);
+            
+            recalculateInventory();
+            
+            // 保存到数据层
+            if (dataLayer.isConnected) {
+                try {
+                    await dataLayer.saveInventory(inventoryData);
+                    await dataLayer.deleteTransaction(transactionIdToDelete);
+                    debugLog('删除操作已同步到云端', 'success');
+                } catch (error) {
+                    debugLog(`同步失败: ${error.message}`, 'error');
+                }
+            }
+            
+            // 本地备份
+            localStorage.setItem('inventory', JSON.stringify(inventoryData));
+            localStorage.setItem('transactions', JSON.stringify(transactionData));
+            
+            hideDeleteConfirm();
+            showNotification(`已删除: ${transaction.product}`, true);
+            refreshAll();
+        }
+
+        // 入库操作
+        document.getElementById('inboundForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!isLoggedIn) {
+                showNotification('请先登录', false);
+                showLoginModal();
+                return;
+            }
+            
+            const product = document.getElementById('inboundProduct').value.trim();
+            const quantity = parseInt(document.getElementById('inboundQuantity').value);
+            const department = document.getElementById('inboundDepartment').value.trim();
+            const remarks = document.getElementById('inboundRemarks').value.trim();
+            
+            if(!product || quantity <= 0) {
+                showNotification('请输入有效信息', false);
+                return;
+            }
+            
+            inventoryData[product] = (inventoryData[product] || 0) + quantity;
+            
+            const transaction = {
+                id: `trans_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                date: new Date().toLocaleString('sv-SE'),
+                product: product,
+                type: 'in',
+                quantity: quantity,
+                department: department,
+                remarks: remarks
+            };
+            transactionData.push(transaction);
+            
+            // 保存到数据层
+            if (dataLayer.isConnected) {
+                try {
+                    await dataLayer.saveInventory(inventoryData);
+                    await dataLayer.addTransaction(transaction);
+                    debugLog('入库操作已同步到云端', 'success');
+                } catch (error) {
+                    debugLog(`同步失败: ${error.message}`, 'error');
+                    showNotification('云端同步失败，数据已本地保存', false);
+                }
+            }
+            
+            // 本地备份
+            localStorage.setItem('inventory', JSON.stringify(inventoryData));
+            localStorage.setItem('transactions', JSON.stringify(transactionData));
+            
+            this.reset();
+            showNotification(`入库成功: ${product}`, true);
+            refreshAll();
+        });
+
+        // 出库操作
+        document.getElementById('outboundForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!isLoggedIn) {
+                showNotification('请先登录', false);
+                showLoginModal();
+                return;
+            }
+            
+            const product = document.getElementById('outboundProduct').value.trim();
+            const quantity = parseInt(document.getElementById('outboundQuantity').value);
+            const department = document.getElementById('outboundDepartment').value.trim();
+            const remarks = document.getElementById('outboundRemarks').value.trim();
+            
+            if(!product || quantity <= 0) {
+                showNotification('请输入有效信息', false);
+                return;
+            }
+            
+            const matchedProduct = findProductMatch(product);
+            if (!matchedProduct) {
+                showNotification(`产品 "${product}" 不存在`, false);
+                return;
+            }
+            
+            const currentStock = inventoryData[matchedProduct] || 0;
+            if(quantity > currentStock) {
+                showNotification(`库存不足: ${currentStock}`, false);
+                return;
+            }
+            
+            inventoryData[matchedProduct] -= quantity;
+            if(inventoryData[matchedProduct] <= 0) {
+                delete inventoryData[matchedProduct];
+            }
+            
+            const transaction = {
+                id: `trans_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                date: new Date().toLocaleString('sv-SE'),
+                product: matchedProduct,
+                type: 'out',
+                quantity: quantity,
+                department: department,
+                remarks: remarks
+            };
+            transactionData.push(transaction);
+            
+            if (dataLayer.isConnected) {
+                try {
+                    await dataLayer.saveInventory(inventoryData);
+                    await dataLayer.addTransaction(transaction);
+                    debugLog('出库操作已同步到云端', 'success');
+                } catch (error) {
+                    debugLog(`同步失败: ${error.message}`, 'error');
+                    showNotification('云端同步失败，数据已本地保存', false);
+                }
+            }
+            
+            localStorage.setItem('inventory', JSON.stringify(inventoryData));
+            localStorage.setItem('transactions', JSON.stringify(transactionData));
+            
+            this.reset();
+            showNotification(`出库成功: ${matchedProduct}`, true);
+            refreshAll();
+        });
+
+        function findProductMatch(inputProduct) {
+            if (inventoryData[inputProduct] !== undefined) return inputProduct;
+            for (const productName in inventoryData) {
+                if (productName.toLowerCase().includes(inputProduct.toLowerCase())) return productName;
+                if (inputProduct.toLowerCase().includes(productName.toLowerCase())) return productName;
+            }
+            return null;
+        }
+
+        // 导出 Excel
+        function exportTransactionsToExcel() {
+            if(transactionData.length === 0) {
+                showNotification('没有交易记录', false);
+                return;
+            }
+            
+            const productGroups = {};
+            transactionData.forEach(t => {
+                if (!productGroups[t.product]) productGroups[t.product] = [];
+                productGroups[t.product].push(t);
+            });
+            
+            const sortedProducts = Object.keys(productGroups).sort();
+            const excelData = [['序号', '日期时间', '产品名称', '操作类型', '数量', '使用部门', '备注']];
+            
+            let serialNumber = 1;
+            const stockRowIndices = [];
+            
+            sortedProducts.forEach((productName, productIndex) => {
+                let productTransactions = productGroups[productName];
+                productTransactions.sort((a, b) => {
+                    if (a.type === 'in' && b.type === 'out') return -1;
+                    if (a.type === 'out' && b.type === 'in') return 1;
+                    return new Date(b.date) - new Date(a.date);
+                });
+                
+                let finalStock = 0;
+                productTransactions.forEach(t => {
+                    finalStock += t.type === 'in' ? t.quantity : -t.quantity;
+                });
+                
+                const stockRowIndex = excelData.length;
+                stockRowIndices.push(stockRowIndex);
+                excelData.push(['当前库存', '', productName, `总库存: ${finalStock}`, finalStock, '', '']);
+                
+                productTransactions.forEach(t => {
+                    excelData.push([serialNumber++, t.date, t.product, t.type === 'in' ? '入库' : '出库', t.quantity, t.department || '', t.remarks || '']);
+                });
+                
+                if (productIndex < sortedProducts.length - 1) {
+                    excelData.push(['', '', '', '', '', '', '']);
+                }
+            });
+            
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(excelData);
+            ws['!cols'] = [{ wch: 12 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 30 }];
+            
+            const yellowFill = {
+                fill: { fgColor: { rgb: "FFFF00" } },
+                font: { bold: true, sz: 12, color: { rgb: "000000" } },
+                alignment: { horizontal: "center", vertical: "center" }
+            };
+            
+            const headerFill = {
+                fill: { fgColor: { rgb: "4CAF50" } },
+                font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } },
+                alignment: { horizontal: "center", vertical: "center" }
+            };
+            
+            for (let c = 0; c < 7; c++) {
+                const cellAddress = XLSX.utils.encode_cell({ r: 0, c: c });
+                if (ws[cellAddress]) ws[cellAddress].s = headerFill;
+            }
+            
+            stockRowIndices.forEach(rowIdx => {
+                for (let c = 0; c < 7; c++) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: rowIdx, c: c });
+                    if (ws[cellAddress]) ws[cellAddress].s = yellowFill;
+                }
+            });
+            
+            XLSX.utils.book_append_sheet(wb, ws, '交易记录');
+            XLSX.writeFile(wb, `交易记录明细_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`);
+            showNotification(`导出 ${transactionData.length} 条记录`, true);
+        }
+
+        // 页面加载初始化
+        window.onload = async function() {
+            debugLog('页面开始加载...', 'info');
+            
+            // 检查 SDK
+            checkSdkLoaded();
+            
+            checkLoginStatus();
+            
+            // 自动连接 Supabase（内置配置）
+            debugLog('使用内置配置自动连接 Supabase...', 'info');
+            updateConfigStatus('connecting', '🔄 正在自动连接云数据库...');
+            
+            const success = await dataLayer.init(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
+            
+            if (success) {
+                // 保存配置到本地
+                saveCloudConfig();
+                
+                dataLayer.updateSyncStatus('connected');
+                updateConfigStatus('connected', '✅ 云同步已启用 - 所有设备数据自动同步');
+                
+                try {
+                    const data = await dataLayer.loadData();
+                    inventoryData = data.inventory;
+                    transactionData = data.transactions;
+                    ensureIds();
+                    debugLog('云端数据加载成功', 'success');
+                } catch (error) {
+                    debugLog(`加载数据失败: ${error.message}`, 'error');
+                    inventoryData = JSON.parse(localStorage.getItem('inventory')) || {};
+                    transactionData = JSON.parse(localStorage.getItem('transactions')) || [];
+                }
+            } else {
+                dataLayer.updateSyncStatus('error');
+                updateConfigStatus('error', '❌ 云连接失败 - 请检查 Supabase 配置和 RLS 策略');
+                inventoryData = JSON.parse(localStorage.getItem('inventory')) || {};
+                transactionData = JSON.parse(localStorage.getItem('transactions')) || [];
+            }
+            
+            ensureIds();
+            refreshAll();
+            
+            // 注册实时监听
+            dataLayer.addListener(() => {
+                dataLayer.loadData().then(data => {
+                    inventoryData = data.inventory;
+                    transactionData = data.transactions;
+                    refreshAll();
+                }).catch(err => {
+                    debugLog(`实时同步失败: ${err.message}`, 'error');
+                });
+            });
+            
+            debugLog('页面加载完成', 'success');
+        };
+    </script>
+</body>
+</html>
